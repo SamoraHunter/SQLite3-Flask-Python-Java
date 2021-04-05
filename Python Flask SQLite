@@ -1,0 +1,211 @@
+##PYTHON FLASK to handle incoming SQL statements sent from java (or whatever else you want to POST from)
+
+#Create databse if you don't have one already
+sqlite3.connect('example.db')
+#You will need to create tables for your DB too:
+conn = sqlite3.connect('...example.db')  
+c = conn.cursor() 
+
+#Create table ONLINECLIENTS
+
+#this will delete your table, useful for testing
+#c.execute('DROP TABLE ONLINECLIENTS;')  
+
+
+#We will auto generate the primary key to avoid any clients having identical. We omit this from our statements entirely. 
+#In java or whatever you are POST with we will for example refer to [Name] text with 'Name="JohnSmith"' (SQLFlaskDELETE.main(String.valueOf("Name="+userName));
+
+
+
+c.execute('''CREATE TABLE ONLINECLIENTS
+             ([generated_id] INTEGER PRIMARY KEY,[Parameters] text,[Name] text, [WLD_ID] text, DateTime DATETIME DEFAULT CURRENT_TIMESTAMP, RunTime text, Total text, DBM text)''')
+          
+    
+                 
+conn.commit()
+
+
+from flask import Flask
+import requests
+import hashlib
+from flask import request
+
+from flask import Flask, g
+import sqlite3
+
+#this does not enable debugging
+#sqlite3.enable_callback_tracebacks(True)
+
+
+app = Flask(__name__)
+
+
+#Path to your db file. 
+PATH = "...example.db"
+
+
+
+
+#These statement building functions will read the POST you will send from Java (in example given) and parse them into a statement. This maybe needs to be updated for your 
+#tables structure. 
+
+#An example is given for what your postText dictionary should look like to be parseable. [Name='JohnSmith', Age='25']
+
+def getInsertStatement(table, postText):
+    columnString = '' 
+    valueString = ''
+    
+    try:
+        #Loop over the information passed in from the postText which is a dictionary, for example 'Name="JohnSmith"'
+        for key in postText:
+                print(key, 'corresponds to', postText[key])
+                columnString = columnString+'"'+key+'"' + ', '
+                valueString = valueString+'"'+postText[key]+'"' + ', '
+        
+        #Remove the final comma
+        print(columnString[:-2])
+        print(valueString[:-2])   
+
+        insertStatement = 'INSERT INTO '+table+' ('+ columnString[:-2]+ ') VALUES('+valueString[:-2]+')'
+        print('returning insert statement finally: ' + insertStatement)
+    except Exception as e:
+        print("FAILED in insert statement building")
+        print(e)
+    
+    return insertStatement   
+
+
+#Again to parse the postText and build an UPDATE statement, this will use the 'LIKE Name' to find the correct record to update. Should be unique.
+def getUpdateStatement(table, postText):
+    columnString = '' 
+    valueString = ''
+    
+    try:
+        setString = ''
+        for key in postText:
+
+            setString = setString + key+' = ' +  '"'+postText[key]+'"'+', '
+
+        print(setString[:-2])
+        
+        UpdateStatement = 'UPDATE '+table+' SET '+setString[:-2] + '' + " WHERE " + '"'+postText['Name']+'"' +' LIKE Name'
+        
+        print('returning UPDATE statement finally: ' + UpdateStatement)
+    except Exception as e:
+        print("FAILED in UPDATE statement building")
+        print(e)
+    
+    return UpdateStatement  
+
+#Once again building a delete statement from postText. This will use the like Name again to identify the record to delete. You will need unqiue names or change to a unique identifier.
+def getDeleteStatement(table, postText):
+    columnString = '' 
+    valueString = ''
+    
+    try:
+        nameToDelete = ''
+        for key in postText:
+
+            nameToDelete = postText[key]
+
+        print(nameToDelete)
+    
+    
+    
+        DeleteStatement = 'DELETE FROM '+table+' WHERE Name LIKE '+'"'+nameToDelete+'"'+';'
+    
+    
+        print('returning Delete Statement  finally: ' + DeleteStatement)
+    except Exception as e:
+        print("FAILED in Delete statement building")
+        print(e)
+    
+    return DeleteStatement 
+
+#Some generic setup
+def connect_db():
+    return sqlite3.connect(PATH)
+
+@app.before_request
+def before_request():
+    g.db = connect_db()
+ 
+@app.teardown_request
+def teardown_request(exception):
+    if hasattr(g, 'db'):
+        g.db.close()
+#end generic setup
+
+#/INSERT is the address we will make our POST requests on when we want to INSERT 
+@app.route('/INSERT',methods = ['POST', 'GET'])
+def readPOST():
+    if request.method == 'POST':
+        print("Post recieved")
+        postText = request.form
+        print('postText ::: ' )
+        print(postText)
+        connect_db()
+        print("Connected to DB")
+        
+        cur = g.db.cursor()
+        print("Cursor set")
+        
+        #Build an insert statement from postText and specify the table 'ONLINECLIENTS' to insert into
+        query = getInsertStatement('ONLINECLIENTS', postText)
+
+     
+        print("Query built: " + query)
+        cur.execute(query)
+        g.db.commit()
+    #unused methods, though functions must return something.     
+    if request.method == 'GET':
+         print("Get recieved")
+    return 'done handling requests'
+
+@app.route('/UPDATE',methods = ['POST', 'GET'])
+def readPOSTUPDATE():
+    if request.method == 'POST':
+        print("PostUPDATE recieved")
+        postText = request.form
+        connect_db()
+        
+        cur = g.db.cursor()
+
+        query = getUpdateStatement('ONLINECLIENTS', postText)
+
+     
+        print("Query built: " + query)
+        cur.execute(query)
+        g.db.commit()
+        
+    if request.method == 'GET':
+         print("Get recieved")
+    return 'done handling requests'
+
+
+@app.route('/DELETE',methods = ['POST', 'GET'])
+def readPOSTDELETE():
+    if request.method == 'POST':
+        print("PostDELETE recieved")
+        postText = request.form
+        connect_db()
+        
+        cur = g.db.cursor()
+
+        query = getDeleteStatement('ONLINECLIENTS', postText)
+
+     
+        print("Query built: " + query)
+        cur.execute(query)
+        g.db.commit()
+        
+    if request.method == 'GET':
+         print("Get recieved")
+    return 'done handling requests'
+
+
+
+       
+#Runs constantly listening, will throw errors to java client if trying to POST and server not listening.         
+if __name__ == "__main__":
+    app.run()
