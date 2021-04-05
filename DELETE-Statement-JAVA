@@ -1,0 +1,80 @@
+//USAGE:
+//We will search the table specified in the python end for the name string provided here. If it exists in the table under column "Name" the record will be deleted. 
+//If keeping an online users dashboard, call this when the user goes offline.  
+//try{
+//     SQLFlaskDELETE.main(String.valueOf("Name="+userName));
+//        } catch (IOException e) {
+//        e.printStackTrace();
+//    }
+
+
+
+package util.log;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
+
+
+
+public class SQLFlaskDELETE {
+
+    private static HttpURLConnection con;
+
+    public static void main(String urlParams) throws IOException {
+
+        String url = "http://127.0.0.1:5000/DELETE";
+        
+
+
+        String urlParameters =urlParams;
+
+        byte[] postData = urlParameters.getBytes(StandardCharsets.UTF_8);
+
+        try {
+
+            URL myurl = new URL(url);
+            con = (HttpURLConnection) myurl.openConnection();
+
+            con.setDoOutput(true);
+            con.setRequestMethod("POST");
+            con.setRequestProperty("User-Agent", "Java client");
+            con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            try ( DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
+
+                wr.write(postData);
+            }
+
+            StringBuilder content;
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(con.getInputStream()))) {
+
+                String line;
+                content = new StringBuilder();
+
+                while ((line = br.readLine()) != null) {
+                    content.append(line);
+                    content.append(System.lineSeparator());
+                }
+            }
+
+          
+
+        } finally {
+
+            con.disconnect();
+        }
+    }
+
+
+
+
+
+}
