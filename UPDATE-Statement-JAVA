@@ -1,0 +1,86 @@
+USAGE in java app:
+
+#using a timer to check periodically and by boolean from initial test if server is online and listening. 
+//if(System.currentTimeMillis()-SQLUpdateTimer > 9000 && SQLLogEnabled){
+//            try {
+//                String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+//                SQLFlaskUPDATE.main(String.valueOf("Parameters=" + parameters + "&Name=" + getName() + "&WLD_ID=" + 64564 + "&DateTime=" + timeStamp +"&RunTime="+ MsConversion(System.currentTimeMillis() - timeStarted)+ "&Total=" + readTotal(this) +"&DBM="+dbmVariable));
+//
+//                SQLUpdateTimer = System.currentTimeMillis();
+//            }catch (IOException e) {
+//                log("Failed to update SQL");
+//                e.printStackTrace();
+//            }
+//        }
+
+
+package util.log;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
+#This will only work if your record already exists, We use 'Name' here to identify the record to be updated. 
+
+
+public class SQLFlaskUPDATE {
+
+    private static HttpURLConnection con;
+
+    public static void main(String urlParams) throws IOException {
+    
+        //Again just writing to this address specified in the python script. 
+        String url = "http://127.0.0.1:5000/UPDATE";
+
+
+        String urlParameters =urlParams;
+
+        byte[] postData = urlParameters.getBytes(StandardCharsets.UTF_8);
+
+        try {
+
+            URL myurl = new URL(url);
+            con = (HttpURLConnection) myurl.openConnection();
+
+            con.setDoOutput(true);
+            con.setRequestMethod("POST");
+            con.setRequestProperty("User-Agent", "Java client");
+            con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            try ( DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
+
+                wr.write(postData);
+            }
+
+            StringBuilder content;
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(con.getInputStream()))) {
+
+                String line;
+                content = new StringBuilder();
+
+                while ((line = br.readLine()) != null) {
+                    content.append(line);
+                    content.append(System.lineSeparator());
+                }
+            }
+
+
+
+
+        } finally {
+
+            con.disconnect();
+        }
+    }
+
+
+
+
+
+}
