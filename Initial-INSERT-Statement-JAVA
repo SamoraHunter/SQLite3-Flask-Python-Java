@@ -1,0 +1,85 @@
+//Call this function like this if added into package util.log: SQLFlask.main(String.valueOf(columnName1=ValueToBeEntered1&columnName2=ValueToBeEntered2...etc); and surround with try catch:
+// try{
+//      SQLFlask.main(String.valueOf("Parameters=" +parameters+"&Name="+getName()+"&WLD_ID="+5435);
+//  }catch (IOException e) {
+//      log("Failed to initialise SQL disabling log updating"); #useful to handle failure here, if you fail to set the first record, later UPDATE statements will also fail
+//      SQLLogEnabled = false;
+//      e.printStackTrace();
+//  }
+
+//This working example is setup to write intially to a record that can be uniquely identified by the "Name", then periodically updated by varaible changes in a java app for a "live" view
+//Records are then deleted from the table on a termination condition in the java app. This way the table shows a current view/status of connected "online" clients. 
+
+
+package util.log;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+
+public class SQLFlask {
+
+    private static HttpURLConnection con;
+
+    public static void main(String urlParams) throws IOException {
+
+        //We will write to this address, it can be changed in the python script to /%whatever%
+        String url = "http://127.0.0.1:5000/INSERT";
+        
+
+        //pass like : columnName1=ValueToBeEntered1&columnName2=ValueToBeEntered2...etc *This may fail to parse on the python end if you have columns that are numerical or non 'text'.
+        //It will attempt to wrap all the entries in "" as per my table setup
+        
+        String urlParameters =urlParams;
+
+        byte[] postData = urlParameters.getBytes(StandardCharsets.UTF_8);
+
+        try {
+
+            URL myurl = new URL(url);
+            con = (HttpURLConnection) myurl.openConnection();
+
+            con.setDoOutput(true);
+            con.setRequestMethod("POST");
+            con.setRequestProperty("User-Agent", "Java client");
+            con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            try ( DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
+
+                wr.write(postData);
+            }
+
+            StringBuilder content;
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(con.getInputStream()))) {
+
+                String line;
+                content = new StringBuilder();
+
+                while ((line = br.readLine()) != null) {
+                    content.append(line);
+                    content.append(System.lineSeparator());
+                }
+            }
+
+            //System.out.println(content.toString());
+
+            //con.disconnect();
+
+
+        } finally {
+
+            con.disconnect();
+        }
+    }
+
+
+
+
+
+}
