@@ -1,3 +1,5 @@
+#Perform operations on a database through a webserver. Operations are generated in Java or elsewhere. Java>>PythonFlask>>SQLite. 
+
 ##PYTHON FLASK to handle incoming SQL statements sent from java (or whatever else you want to POST from)
 
 #Create databse if you don't have one already
